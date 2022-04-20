@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+  localstack:
+    container_name: gourmeal_localstack
+    image: localstack/localstack
+    network_mode: bridge
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    env_file:
+      - .env
