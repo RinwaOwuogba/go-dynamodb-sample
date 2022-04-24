@@ -7,9 +7,15 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
+
+type MovieItem struct  {
+    ReleaseYear int16
+    Title string
+}
 
 func PrintTables(svc *dynamodb.Client) {
     // Build the request with its input parameters
@@ -22,7 +28,7 @@ func PrintTables(svc *dynamodb.Client) {
 
     fmt.Println("Tables:")
     for _, tableName := range resp.TableNames {
-        fmt.Println(tableName)
+        fmt.Printf("- %s \n", tableName)
     }
 }
 
@@ -30,7 +36,7 @@ func CreateTable(svc *dynamodb.Client, tableName string) {
     input := &dynamodb.CreateTableInput{
         AttributeDefinitions: []types.AttributeDefinition{
             {
-                AttributeName: aws.String("Year"),
+                AttributeName: aws.String("ReleaseYear"),
                 AttributeType: types.ScalarAttributeTypeN,
             },
             {
@@ -40,7 +46,7 @@ func CreateTable(svc *dynamodb.Client, tableName string) {
         },
         KeySchema: []types.KeySchemaElement{
             {
-                AttributeName: aws.String("Year"),
+                AttributeName: aws.String("ReleaseYear"),
                 KeyType:       types.KeyTypeHash,
             },
             {
@@ -64,7 +70,6 @@ func CreateTable(svc *dynamodb.Client, tableName string) {
 
 func DeleteTable(svc *dynamodb.Client, tableName string) {
     input := &dynamodb.DeleteTableInput{
-   
         TableName: aws.String(tableName),
     }
     
@@ -74,6 +79,29 @@ func DeleteTable(svc *dynamodb.Client, tableName string) {
         log.Fatalf("Got error calling DeleteTable: %s", err)
     }
     fmt.Println("Deleted the table", tableName)
+}
+
+func PutItem(svc *dynamodb.Client, inputItem MovieItem, tableName string) error {
+	input, err := attributevalue.MarshalMap(inputItem)
+	if err != nil {
+		log.Fatalln("Error marshalling input item")
+	}
+
+	finalInput := &dynamodb.PutItemInput{
+		Item:                input,
+		TableName:           aws.String(tableName),
+		ConditionExpression: aws.String("attribute_not_exists(ReleaseYear)"),
+	}
+
+	_, err = svc.PutItem(context.TODO(), finalInput)
+
+	if err != nil {
+        return err;
+	}
+
+	fmt.Printf("Suksexful\n\n")
+    return nil;
+	// fmt.Println(x.AttributeDefinitions)
 }
 
 func main() {
@@ -90,10 +118,25 @@ func main() {
 
     // Create table Movies
     tableName := "Movies"
+
     CreateTable(svc, tableName);
     PrintTables(svc);
-
     fmt.Println()
+
+    // Put item
+    newMovie := MovieItem{
+        ReleaseYear: 2022,
+        Title: "Dawn of Ice",
+    };
+    err := PutItem(svc, newMovie, tableName);
+    if (err != nil) {
+		log.Println("Error putting item in DB: ", err.Error())
+    }
+
+    err = PutItem(svc, newMovie, tableName);
+    if (err != nil) {   
+		log.Println("Error putting item in DB: ", err.Error())
+    }
     
     DeleteTable(svc, tableName);
     PrintTables(svc);
