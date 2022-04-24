@@ -7,25 +7,9 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
-
-type EndPointResolverFunc func(service, region string, options ...interface{}) (aws.Endpoint, error)
-
-func (e EndPointResolverFunc) ResolveEndpoint(service, region string, options ...interface{})  (aws.Endpoint, error) {
-    return e(service, region, options);
-};
-
-func DummyResolver(service, region string, options ...interface{})  (aws.Endpoint, error) {
-    endpoint := aws.Endpoint{
-        URL: "http://localhost:4566",
-        Source: aws.EndpointSourceCustom,
-        SigningRegion: region,
-    };
-    return endpoint, nil;
-}
 
 func PrintTables(svc *dynamodb.Client) {
     // Build the request with its input parameters
@@ -43,8 +27,6 @@ func PrintTables(svc *dynamodb.Client) {
 }
 
 func CreateTable(svc *dynamodb.Client, tableName string) {
-    
-
     input := &dynamodb.CreateTableInput{
         AttributeDefinitions: []types.AttributeDefinition{
             {
@@ -99,21 +81,12 @@ func main() {
     os.Setenv("AWS_ACCESS_KEY_ID", "test")
     os.Setenv("AWS_SECRET_ACCESS_KEY", "test")
 
-    // Using the SDK's default configuration, loading additional config
-    // and credentials values from the environment variables, shared
-    // credentials, and shared configuration files
-    cfg, err := config.LoadDefaultConfig(context.TODO(),
-   		config. WithRegion("us-west-2"),
-        config.WithEndpointResolverWithOptions(EndPointResolverFunc(DummyResolver)),
-   	)
-
-    if err != nil {
-        log.Fatalf("unable to load SDK config, %v", err)
-    }
-	
-
-    // Using the Config value, create the DynamoDB client
-    svc := dynamodb.NewFromConfig(cfg)
+    opts := dynamodb.Options{
+        Region:           "us-east-1",
+		EndpointResolver: dynamodb.EndpointResolverFromURL("http://localhost:4566"),
+	}
+    // Using the config options, create the DynamoDB client
+    svc := dynamodb.New(opts);
 
     // Create table Movies
     tableName := "Movies"
